@@ -9,33 +9,124 @@ param(
     [string] $Login = "",
     [string] $Password = "",
     [string] $Server = "",
-    [switch] $CompileFirst
+    [switch] $CompileFirst,
+    [string] $ExpertPath = "RoboScalper\RoboScalper",
+    [string] $SourcePath = "",
+    [string] $SetPath = "",
+    [string] $ExpertParameters = "",
+    [string] $RunLabel = ""
 )
 
 . (Join-Path $PSScriptRoot "mt5_common.ps1")
 
+function Convert-ToSafeName {
+    param([string] $Value)
+
+    $safe = $Value -replace '[\\/:*?"<>|\s]+', '_'
+    $safe = $safe.Trim('_')
+    if ($safe -eq "") {
+        return "mt5_run"
+    }
+    return $safe
+}
+
+function Compile-ExternalExpert {
+    param(
+        [hashtable] $Paths,
+        [string] $RepoRoot,
+        [string] $ExpertPath,
+        [string] $SourcePath,
+        [string] $RunDir
+    )
+
+    $resolvedSource = (Resolve-Path -LiteralPath $SourcePath).Path
+    $target = Join-Path $Paths.DataDir ("MQL5\Experts\$ExpertPath.mq5")
+    $targetDir = Split-Path -Parent $target
+    $compileDir = Join-Path $RepoRoot "runs\compile"
+    $compileSafe = Convert-ToSafeName $ExpertPath
+    $logPath = Join-Path $compileDir "$compileSafe.compile.log"
+
+    New-Item -ItemType Directory -Force -Path $targetDir, $compileDir | Out-Null
+    Copy-Item -LiteralPath $resolvedSource -Destination $target -Force
+    Copy-Item -LiteralPath $resolvedSource -Destination (Join-Path $RunDir "$compileSafe.mq5") -Force
+
+    $args = "/compile:`"$target`" /log:`"$logPath`" /quiet"
+
+    Write-Host "MetaEditor: $($Paths.MetaEditor)"
+    Write-Host "EA externo copiado para: $target"
+    Write-Host "Log de compilacao: $logPath"
+
+    $process = Start-Process -FilePath $Paths.MetaEditor -ArgumentList $args -Wait -PassThru -WindowStyle Hidden
+
+    if (Test-Path -LiteralPath $logPath) {
+        Copy-Item -LiteralPath $logPath -Destination (Join-Path $RunDir "$compileSafe.compile.log") -Force
+        Get-Content -LiteralPath $logPath | Select-Object -Last 80
+    }
+
+    $compiled = [System.IO.Path]::ChangeExtension($target, ".ex5")
+    if (!(Test-Path -LiteralPath $compiled)) {
+        throw "Compilacao nao gerou EX5 esperado: $compiled"
+    }
+
+    $logText = ""
+    if (Test-Path -LiteralPath $logPath) {
+        $logText = Get-Content -LiteralPath $logPath -Raw
+    }
+
+    if ($process.ExitCode -ne 0 -and $logText -notmatch "Result:\s+0 errors") {
+        throw "MetaEditor retornou codigo $($process.ExitCode). Veja o log em $logPath"
+    }
+
+    Write-Host "Compilado: $compiled"
+}
+
 $repoRoot = Get-RepoRoot
 $paths = Resolve-Mt5Paths
 
-if ($CompileFirst) {
-    & (Join-Path $PSScriptRoot "mt5_compile.ps1")
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$effectiveRunLabel = $RunLabel
+if ($effectiveRunLabel -eq "" -and $SourcePath -ne "") {
+    $effectiveRunLabel = Convert-ToSafeName $ExpertPath
 }
 
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$runDir = Join-Path $repoRoot "runs\$stamp"
+$runSubdir = $stamp
+if ($effectiveRunLabel -ne "") {
+    $runSubdir = "$stamp-$(Convert-ToSafeName $effectiveRunLabel)"
+}
+
+$runDir = Join-Path $repoRoot "runs\$runSubdir"
 $mt5RunRoot = Join-Path $paths.DataDir "MQL5\Files\RoboScalperRuns"
-$mt5RunDir = Join-Path $mt5RunRoot $stamp
+$mt5RunDir = Join-Path $mt5RunRoot $runSubdir
 $configPath = Join-Path $mt5RunDir "tester.ini"
-$reportBase = Join-Path $mt5RunDir "RoboScalper"
-$sourceSetPath = Join-Path $repoRoot "config\RoboScalper.set"
+$expertSafe = Convert-ToSafeName $ExpertPath
+$expertLeaf = Split-Path -Leaf $ExpertPath
+$reportBase = Join-Path $mt5RunDir $expertSafe
 $profileSetDir = Join-Path $paths.DataDir "MQL5\Profiles\Tester"
-$profileSetPath = Join-Path $profileSetDir "RoboScalper.set"
 
 New-Item -ItemType Directory -Force -Path $runDir, $mt5RunDir, $profileSetDir | Out-Null
 
-if (Test-Path -LiteralPath $sourceSetPath) {
-    Copy-Item -LiteralPath $sourceSetPath -Destination $profileSetPath -Force
-    Copy-Item -LiteralPath $sourceSetPath -Destination (Join-Path $runDir "RoboScalper.set") -Force
+if ($SourcePath -ne "") {
+    Compile-ExternalExpert -Paths $paths -RepoRoot $repoRoot -ExpertPath $ExpertPath -SourcePath $SourcePath -RunDir $runDir
+}
+elseif ($CompileFirst) {
+    & (Join-Path $PSScriptRoot "mt5_compile.ps1")
+}
+
+if ($SetPath -eq "" -and $ExpertPath -eq "RoboScalper\RoboScalper") {
+    $SetPath = Join-Path $repoRoot "config\RoboScalper.set"
+    if ($ExpertParameters -eq "") {
+        $ExpertParameters = "RoboScalper.set"
+    }
+}
+
+if ($SetPath -ne "" -and (Test-Path -LiteralPath $SetPath)) {
+    if ($ExpertParameters -eq "") {
+        $ExpertParameters = "$expertSafe.set"
+    }
+
+    $profileSetPath = Join-Path $profileSetDir $ExpertParameters
+    Copy-Item -LiteralPath $SetPath -Destination $profileSetPath -Force
+    Copy-Item -LiteralPath $SetPath -Destination (Join-Path $runDir $ExpertParameters) -Force
 }
 
 $commonConfig = ""
@@ -49,26 +140,34 @@ Server=$Server
 "@
 }
 
-$testerConfig = $commonConfig + @"
-[Tester]
-Expert=RoboScalper\RoboScalper
-ExpertParameters=RoboScalper.set
-Symbol=$Symbol
-Period=$Period
-Optimization=0
-Model=0
-FromDate=$FromDate
-ToDate=$ToDate
-ForwardMode=0
-Deposit=$Deposit
-Currency=USD
-Leverage=$Leverage
-ExecutionMode=0
-Visual=0
-Report=$reportBase
-ReplaceReport=1
-ShutdownTerminal=1
-"@
+$testerLines = @(
+    "[Tester]",
+    "Expert=$ExpertPath"
+)
+
+if ($ExpertParameters -ne "") {
+    $testerLines += "ExpertParameters=$ExpertParameters"
+}
+
+$testerLines += @(
+    "Symbol=$Symbol",
+    "Period=$Period",
+    "Optimization=0",
+    "Model=0",
+    "FromDate=$FromDate",
+    "ToDate=$ToDate",
+    "ForwardMode=0",
+    "Deposit=$Deposit",
+    "Currency=USD",
+    "Leverage=$Leverage",
+    "ExecutionMode=0",
+    "Visual=0",
+    "Report=$reportBase",
+    "ReplaceReport=1",
+    "ShutdownTerminal=1"
+)
+
+$testerConfig = $commonConfig + ($testerLines -join "`r`n") + "`r`n"
 
 Set-Content -LiteralPath $configPath -Value $testerConfig -Encoding ASCII
 
@@ -126,6 +225,20 @@ if (Test-Path -LiteralPath $terminalLog) {
 
 if (Test-Path -LiteralPath $testerLog) {
     Copy-Item -LiteralPath $testerLog -Destination (Join-Path $runDir "tester.log") -Force
+}
+
+$cacheRoot = Join-Path $paths.DataDir "Tester\cache"
+if (Test-Path -LiteralPath $cacheRoot) {
+    Get-ChildItem -LiteralPath $cacheRoot -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.LastWriteTime -ge $launchTime.AddMinutes(-1) -and
+            $_.Name -like "$expertLeaf.$Symbol.$Period.*.tst"
+        } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 5 |
+        ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $runDir $_.Name) -Force
+        }
 }
 
 $agentRoot = Join-Path $env:APPDATA "MetaQuotes\Tester"

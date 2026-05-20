@@ -29,16 +29,21 @@ input bool   InpEnableTesterOrders = true;
 input int    InpMagicNumber = 55749699;
 
 input double InpFixedLot = 0.10;
+input bool   InpUseRiskSizing = true;
+input double InpRiskPerTradePct = 0.007;
 input double InpMaxLot = 0.50;
-input int    InpMaxSpreadPoints = 80;
+input int    InpMaxSpreadPoints = 35;
 input int    InpStopLossPoints = 500;
-input int    InpTakeProfitPoints = 2400;
+input int    InpTakeProfitPoints = 1000;
 
-input int    InpSessionStartHour = 3;
-input int    InpSessionEndHour = 6;
-input int    InpMaxTradesPerSession = 40;
+input int    InpSessionStartHour = 8;
+input int    InpSessionEndHour = 11;
+input bool   InpUseSecondSession = true;
+input int    InpSession2StartHour = 13;
+input int    InpSession2EndHour = 16;
+input int    InpMaxTradesPerSession = 6;
 input int    InpMaxConsecutiveLosses = 3;
-input int    InpCooldownSecondsAfterLoss = 180;
+input int    InpCooldownSecondsAfterLoss = 900;
 input int    InpCooldownSecondsAfterLossStreak = 900;
 input bool   InpLockSessionAfterFastLoss = true;
 input int    InpFastLossSeconds = 120;
@@ -52,17 +57,17 @@ input double InpMaxGivebackFromPeakMoney = 150.0;
 input bool   InpAllowBuy = true;
 input bool   InpAllowSell = false;
 input int    InpAtrPeriod = 14;
-input int    InpBreakoutLookback = 8;
+input int    InpBreakoutLookback = 14;
 input int    InpFastTrendPeriod = 5;
 input int    InpSlowTrendPeriod = 20;
 input bool   InpUseMtfConfluence = true;
 input int    InpMtfFastTrendPeriod = 3;
 input int    InpMtfSlowTrendPeriod = 12;
-input int    InpMtfMinAligned = 1;
-input bool   InpUseH1TrendFilter = false;
+input int    InpMtfMinAligned = 3;
+input bool   InpUseH1TrendFilter = true;
 input H1FilterMode InpH1FilterMode = H1_FILTER_BLOCK_OPPOSITE;
-input int    InpH1FastTrendPeriod = 3;
-input int    InpH1SlowTrendPeriod = 12;
+input int    InpH1FastTrendPeriod = 50;
+input int    InpH1SlowTrendPeriod = 200;
 input bool   InpUseBreakoutRetest = false;
 input int    InpRetestMaxBars = 5;
 input int    InpRetestTolerancePoints = 150;
@@ -72,7 +77,7 @@ input int    InpWLookbackBars = 12;
 input int    InpWTolerancePoints = 180;
 input double InpWMinNecklineAtr = 0.40;
 input double InpMinBodyAtr = 0.45;
-input double InpMinRangeAtr = 0.70;
+input double InpMinRangeAtr = 2.20;
 input double InpCloseNearExtreme = 0.70;
 input int    InpMinSecondsBetweenEntries = 20;
 
@@ -193,10 +198,20 @@ bool IsTradingWindow()
    MqlDateTime dt;
    TimeToStruct(TimeCurrent(), dt);
 
-   if(InpSessionStartHour <= InpSessionEndHour)
-      return dt.hour >= InpSessionStartHour && dt.hour <= InpSessionEndHour;
+   if(IsWithinHourWindow(dt.hour, InpSessionStartHour, InpSessionEndHour))
+      return true;
 
-   return dt.hour >= InpSessionStartHour || dt.hour <= InpSessionEndHour;
+   return InpUseSecondSession &&
+      IsWithinHourWindow(dt.hour, InpSession2StartHour, InpSession2EndHour);
+}
+
+//+------------------------------------------------------------------+
+bool IsWithinHourWindow(int hour, int start_hour, int end_hour)
+{
+   if(start_hour <= end_hour)
+      return hour >= start_hour && hour <= end_hour;
+
+   return hour >= start_hour || hour <= end_hour;
 }
 
 //+------------------------------------------------------------------+
@@ -390,7 +405,10 @@ void TryOpen(int direction)
    if(direction == 0)
       return;
 
-   double lot = NormalizeLot(MathMin(InpFixedLot, InpMaxLot));
+   double lot = InpUseRiskSizing ?
+      CalculateRiskLot(InpStopLossPoints) :
+      NormalizeLot(MathMin(InpFixedLot, InpMaxLot));
+
    if(lot <= 0.0)
       return;
 
@@ -743,6 +761,29 @@ bool DetectM1WSignal(const MqlRates &rates[], int copied, double atr, int &direc
    }
 
    return false;
+}
+
+//+------------------------------------------------------------------+
+double CalculateRiskLot(int stop_loss_points)
+{
+   if(stop_loss_points <= 0 || InpRiskPerTradePct <= 0.0)
+      return NormalizeLot(MathMin(InpFixedLot, InpMaxLot));
+
+   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tick_size = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+
+   if(equity <= 0.0 || tick_value <= 0.0 || tick_size <= 0.0 || point <= 0.0)
+      return NormalizeLot(MathMin(InpFixedLot, InpMaxLot));
+
+   double risk_money = equity * InpRiskPerTradePct;
+   double stop_distance = stop_loss_points * point;
+   double loss_per_lot = (stop_distance / tick_size) * tick_value;
+   if(loss_per_lot <= 0.0)
+      return NormalizeLot(MathMin(InpFixedLot, InpMaxLot));
+
+   return NormalizeLot(MathMin(risk_money / loss_per_lot, InpMaxLot));
 }
 
 //+------------------------------------------------------------------+
