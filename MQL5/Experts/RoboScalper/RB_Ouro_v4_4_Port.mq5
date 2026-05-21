@@ -38,6 +38,13 @@ input int session2_start_hour = 13;
 input int session2_end_hour   = 16;
 input string trade_hour_mask = "";      // e.g. "3,13,14,15,21,22"; empty uses session windows
 input string trade_weekday_mask = "";   // 1=Mon ... 5=Fri; empty allows all broker weekdays
+input string weekday_risk_multipliers = ""; // e.g. "1:1.0,2:0.65,3:0.35,4:0.20,5:0.30"
+input string hour_risk_multipliers = "";    // e.g. "3:1.0,14:1.0,15:0.45"
+input double min_quality_for_trade = 0.05;
+input double weak_quality_threshold = 0.35;
+input double weak_quality_adx_bonus = 5.0;
+input double weak_quality_impulse_bonus = 0.30;
+input double weak_quality_close_pos_bonus = 0.04;
 input int avoid_first_minutes_of_hour = 2;
 input int cooldown_seconds_after_order_fail = 60;
 input bool allow_buy = true;
@@ -233,6 +240,53 @@ bool MaskAllowsInt(string mask_value,int value)
    return false;
 }
 
+double LookupMultiplier(string map_value,int key,double fallback)
+{
+   string map=map_value;
+   StringTrimLeft(map);
+   StringTrimRight(map);
+   if(StringLen(map)==0)
+      return fallback;
+
+   string parts[];
+   int count=StringSplit(map, ',', parts);
+   for(int i=0; i<count; i++)
+   {
+      string token=parts[i];
+      StringTrimLeft(token);
+      StringTrimRight(token);
+      if(StringLen(token)==0)
+         continue;
+
+      int colon=StringFind(token, ":");
+      if(colon<=0)
+         continue;
+
+      string key_text=StringSubstr(token, 0, colon);
+      string value_text=StringSubstr(token, colon+1);
+      StringTrimLeft(key_text);
+      StringTrimRight(key_text);
+      StringTrimLeft(value_text);
+      StringTrimRight(value_text);
+
+      if((int)StringToInteger(key_text)==key)
+         return StringToDouble(value_text);
+   }
+
+   return fallback;
+}
+
+double CurrentContextQuality()
+{
+   MqlDateTime tm; TimeToStruct(TimeCurrent(), tm);
+   double weekday_quality=LookupMultiplier(weekday_risk_multipliers, tm.day_of_week, 1.0);
+   double hour_quality=LookupMultiplier(hour_risk_multipliers, tm.hour, 1.0);
+   double quality=weekday_quality*hour_quality;
+   if(quality<0.0)
+      quality=0.0;
+   return quality;
+}
+
 bool SessionOK()
 {
    if(!use_session_filter) return true;
@@ -314,6 +368,14 @@ double CalcRiskPct(double vol_ratio)
       if(r>risk_max_pct) r=risk_max_pct;
    }
    return r;
+}
+
+double ApplyContextRisk(double risk_pct,double context_quality)
+{
+   double adjusted=risk_pct*context_quality;
+   if(adjusted>risk_max_pct)
+      adjusted=risk_max_pct;
+   return adjusted;
 }
 
 // Squeeze computations
@@ -504,7 +566,23 @@ void OnTick()
    double vol_ratio=1.0;
    if(!GetVolRatio(vol_ratio)) return;
    if(!VolatilityRegimeOK(vol_ratio)) return;
-   double risk_pct=CalcRiskPct(vol_ratio);
+   double context_quality=CurrentContextQuality();
+   if(context_quality < min_quality_for_trade) return;
+
+   double risk_pct=ApplyContextRisk(CalcRiskPct(vol_ratio), context_quality);
+   if(risk_pct<=0.0) return;
+
+   double active_adx_min=ADX_min;
+   double active_impulse_mult=impulse_mult;
+   double active_close_pos_min=close_pos_min;
+   if(context_quality <= weak_quality_threshold)
+   {
+      active_adx_min += weak_quality_adx_bonus;
+      active_impulse_mult += weak_quality_impulse_bonus;
+      active_close_pos_min += weak_quality_close_pos_bonus;
+      if(active_close_pos_min>0.95)
+         active_close_pos_min=0.95;
+   }
 
    if(!SqueezeGateOK()) return;
    if(!ADX_M15_OK()) return;
@@ -522,7 +600,7 @@ void OnTick()
 
    double adx_buf[1];
    if(CopyBuffer(adx_m1_handle,0,0,1,adx_buf)!=1) return;
-   if(adx_buf[0] < ADX_min) return;
+   if(adx_buf[0] < active_adx_min) return;
 
    double HH15=0.0, LL15=0.0;
    if(!GetM15StructureLevels(HH15,LL15)) return;
@@ -532,7 +610,7 @@ void OnTick()
    double close0=iClose(_Symbol, PERIOD_M1, 0);
 
    double range_points=(high0-low0)/_Point;
-   if(range_points < impulse_mult*atr_points) return;
+   if(range_points < active_impulse_mult*atr_points) return;
 
    double close_pos = (high0>low0) ? ((close0-low0)/(high0-low0)) : 0.5;
 
@@ -540,7 +618,7 @@ void OnTick()
    double bid=SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double buffer_points=structural_buffer_ATR*atr_points;
 
-   if(allow_buy && bias_up && bid>HH15 && close_pos>=close_pos_min)
+   if(allow_buy && bias_up && bid>HH15 && close_pos>=active_close_pos_min)
    {
       double sl_price = LL15 - buffer_points*_Point;
       double sl_points = (ask - sl_price)/_Point;
@@ -561,7 +639,7 @@ void OnTick()
       return;
    }
 
-   if(allow_sell && bias_dn && ask<LL15 && close_pos <= (1.0-close_pos_min))
+   if(allow_sell && bias_dn && ask<LL15 && close_pos <= (1.0-active_close_pos_min))
    {
       double sl_price = HH15 + buffer_points*_Point;
       double sl_points = (sl_price - bid)/_Point;
