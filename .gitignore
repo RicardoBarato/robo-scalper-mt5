@@ -10,6 +10,9 @@ __pycache__/
 *.set
 *.opt
 !config/RoboScalper.set
+!config/RB_Ouro_v4_4_Port.balanced.set
+!config/RB_Ouro_v4_4_Port.hourmask.set
+!config/RB_Ouro_v4_4_Port.refined.set
 
 # Local exports can stay in the repo only when intentionally added.
 config/mt5.local.ps1

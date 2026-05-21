@@ -36,6 +36,12 @@ input int session1_start_hour = 8;
 input int session1_end_hour   = 11;
 input int session2_start_hour = 13;
 input int session2_end_hour   = 16;
+input string trade_hour_mask = "";      // e.g. "3,13,14,15,21,22"; empty uses session windows
+input string trade_weekday_mask = "";   // 1=Mon ... 5=Fri; empty allows all broker weekdays
+input int avoid_first_minutes_of_hour = 2;
+input int cooldown_seconds_after_order_fail = 60;
+input bool allow_buy = true;
+input bool allow_sell = true;
 
 // BASE
 input int ATR_period   = 14;   // ATR M1
@@ -109,6 +115,7 @@ int trades_today=0;
 bool locked_today=false;
 int session_day_key=-1;
 datetime last_sl_time=0;
+datetime last_order_failure_time=0;
 
 bool squeeze_prev_on=false;
 int squeeze_release_countdown=0;
@@ -148,6 +155,7 @@ void ResetDailyIfNeeded()
       trades_today=0;
       locked_today=false;
       last_sl_time=0;
+      last_order_failure_time=0;
 
       squeeze_prev_on=false;
       squeeze_release_countdown=0;
@@ -200,11 +208,48 @@ bool InWindow(int h,int start,int end_exclusive)
    return false;
 }
 
+bool MaskAllowsInt(string mask_value,int value)
+{
+   string mask=mask_value;
+   StringTrimLeft(mask);
+   StringTrimRight(mask);
+   if(StringLen(mask)==0)
+      return true;
+
+   string parts[];
+   int count=StringSplit(mask, ',', parts);
+   for(int i=0; i<count; i++)
+   {
+      string token=parts[i];
+      StringTrimLeft(token);
+      StringTrimRight(token);
+      if(StringLen(token)==0)
+         continue;
+
+      int allowed=(int)StringToInteger(token);
+      if(allowed==value)
+         return true;
+   }
+   return false;
+}
+
 bool SessionOK()
 {
    if(!use_session_filter) return true;
    MqlDateTime tm; TimeToStruct(TimeCurrent(), tm);
+   if(!MaskAllowsInt(trade_weekday_mask, tm.day_of_week))
+      return false;
+
+   if(avoid_first_minutes_of_hour > 0 && tm.min < avoid_first_minutes_of_hour)
+      return false;
+
    int h=tm.hour;
+   string hour_mask=trade_hour_mask;
+   StringTrimLeft(hour_mask);
+   StringTrimRight(hour_mask);
+   if(StringLen(hour_mask)>0)
+      return MaskAllowsInt(hour_mask,h);
+
    return (InWindow(h,session1_start_hour,session1_end_hour) ||
            InWindow(h,session2_start_hour,session2_end_hour));
 }
@@ -448,6 +493,7 @@ void OnTick()
    ResetDailyIfNeeded();
 
    if(last_sl_time>0 && (TimeCurrent()-last_sl_time) < cooldown_minutes_after_sl*60) return;
+   if(last_order_failure_time>0 && (TimeCurrent()-last_order_failure_time) < cooldown_seconds_after_order_fail) return;
    if(!SessionOK()) return;
    if(PositionSelect(_Symbol)) return;
 
@@ -494,7 +540,7 @@ void OnTick()
    double bid=SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double buffer_points=structural_buffer_ATR*atr_points;
 
-   if(bias_up && bid>HH15 && close_pos>=close_pos_min)
+   if(allow_buy && bias_up && bid>HH15 && close_pos>=close_pos_min)
    {
       double sl_price = LL15 - buffer_points*_Point;
       double sl_points = (ask - sl_price)/_Point;
@@ -505,12 +551,17 @@ void OnTick()
 
       double tp_price = ask + (TP_R*sl_points)*_Point;
 
-      if(CanSendOrders() && trade.Buy(lots,_Symbol,ask,sl_price,tp_price))
-         trades_today++;
+      if(CanSendOrders())
+      {
+         if(trade.Buy(lots,_Symbol,ask,sl_price,tp_price))
+            trades_today++;
+         else
+            last_order_failure_time=TimeCurrent();
+      }
       return;
    }
 
-   if(bias_dn && ask<LL15 && close_pos <= (1.0-close_pos_min))
+   if(allow_sell && bias_dn && ask<LL15 && close_pos <= (1.0-close_pos_min))
    {
       double sl_price = HH15 + buffer_points*_Point;
       double sl_points = (sl_price - bid)/_Point;
@@ -521,8 +572,13 @@ void OnTick()
 
       double tp_price = bid - (TP_R*sl_points)*_Point;
 
-      if(CanSendOrders() && trade.Sell(lots,_Symbol,bid,sl_price,tp_price))
-         trades_today++;
+      if(CanSendOrders())
+      {
+         if(trade.Sell(lots,_Symbol,bid,sl_price,tp_price))
+            trades_today++;
+         else
+            last_order_failure_time=TimeCurrent();
+      }
       return;
    }
 }
