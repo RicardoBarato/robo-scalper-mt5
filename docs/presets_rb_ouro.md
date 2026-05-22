@@ -17,6 +17,7 @@ Todos os resultados abaixo foram testados em XAUUSD M1, periodo 2023.05.20 a 202
 | `RB_Ouro_v4_4_Port.quality-mtf-direct.set` | Rompimento direto com confirmacao M5/M15 | Todos | 1,3,14,15,22 | +113.80% | 36 | 63.89% | 2.59 | 258.51 | 20.65% |
 | `RB_Ouro_v4_4_Port.quality-mtf-rocket.set` | MTF direct com risco alto controlado | Todos | 1,3,14,15,22 | +177.88% | 40 | 60.00% | 2.23 | 518.87 | 32.96% |
 | `RB_Ouro_v4_4_Port.quality-mtf-ultra.set` | MTF direct agressivo para capital pequeno | Todos | 1,3,14,15,22 | +379.76% | 56 | 55.36% | 1.97 | 1342.49 | 45.87% |
+| `RB_Ouro_v4_4_Port.quality-mtf-trendrunner.set` | H4 trend runner com TP maior e trailing ATR | Todos | 1,3,14,15,22 | +481.54% | 36 | 61.11% | 2.77 | 1183.25 | 32.20% |
 | `RB_Ouro_v4_4_Port.ustec-curiosity.set` | Curiosidade USTEC com o mesmo cerebro | Seg/Ter | 3,14 | 0.00% | 0 | 0.00% | 0 | 0.00 | 0.00% |
 
 ## Diferenciais
@@ -74,6 +75,14 @@ Escala risco sobre a `quality-mtf-direct`, dando mais peso aos contextos que car
 Versao agressiva para capital pequeno. Em 3 anos entregou +379.76%, PF 1.97, winrate 55.36% e DD 45.87%. Em 5 anos entregou +212.80%, PF 1.70, winrate 54.10% e DD 44.88%.
 
 Conclusao: e a maior potencia da familia v4.5, mas ainda nao e perfil limpo. O ano de 2022 foi negativo e mostra que precisamos de um filtro de regime macro/overextension antes de pensar em producao.
+
+### `quality-mtf-trendrunner.set`
+
+Versao criada para capturar mais do movimento estrutural do ouro. Usa vies H4, confirmacao M15/H1, TP mais distante e trailing por ATR. A ideia e deixar os melhores movimentos andarem, em vez de encerrar todos os trades com alvo curto de scalper.
+
+Resultado de 3 anos: +481.54%, winrate 61.11%, PF 2.77, DD aprox. 32.20%, 36 trades. Resultado de 5 anos: +206.50%, winrate 58.97%, PF 2.19, DD aprox. 43.65%, 39 trades.
+
+Conclusao: e o melhor candidato agressivo ate agora. Ele supera a `quality-mtf-ultra` no periodo de 3 anos com PF maior e DD menor, mas ainda mostra fragilidade em 2022. Deve ser a base da proxima rodada, com filtro de regime para evitar operar long em ambiente macro ruim.
 
 ### `ustec-curiosity.set`
 
