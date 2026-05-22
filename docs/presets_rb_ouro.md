@@ -18,6 +18,7 @@ Todos os resultados abaixo foram testados em XAUUSD M1, periodo 2023.05.20 a 202
 | `RB_Ouro_v4_4_Port.quality-mtf-rocket.set` | MTF direct com risco alto controlado | Todos | 1,3,14,15,22 | +177.88% | 40 | 60.00% | 2.23 | 518.87 | 32.96% |
 | `RB_Ouro_v4_4_Port.quality-mtf-ultra.set` | MTF direct agressivo para capital pequeno | Todos | 1,3,14,15,22 | +379.76% | 56 | 55.36% | 1.97 | 1342.49 | 45.87% |
 | `RB_Ouro_v4_4_Port.quality-mtf-trendrunner.set` | H4 trend runner com TP maior e trailing ATR | Todos | 1,3,14,15,22 | +481.54% | 36 | 61.11% | 2.77 | 1183.25 | 32.20% |
+| `RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set` | Trendrunner com corte rapido de risco em DD | Todos | 1,3,14,15,22 | +309.32% | 32 | 62.50% | 2.66 | 812.14 | 23.99% |
 | `RB_Ouro_v4_4_Port.ustec-curiosity.set` | Curiosidade USTEC com o mesmo cerebro | Seg/Ter | 3,14 | 0.00% | 0 | 0.00% | 0 | 0.00 | 0.00% |
 
 ## Diferenciais
@@ -84,6 +85,18 @@ Resultado de 3 anos: +481.54%, winrate 61.11%, PF 2.77, DD aprox. 32.20%, 36 tra
 
 Conclusao: e o melhor candidato agressivo ate agora. Ele supera a `quality-mtf-ultra` no periodo de 3 anos com PF maior e DD menor, mas ainda mostra fragilidade em 2022. Deve ser a base da proxima rodada, com filtro de regime para evitar operar long em ambiente macro ruim.
 
+### `quality-mtf-trendrunner-d1soft.set` e `quality-mtf-trendrunner-d1strict.set`
+
+Testes v4.6 com filtro macro D1 por EMA. O `d1soft` nao alterou os resultados; o `d1strict` preservou quase todo o retorno de 3 anos, mas nao reduziu 2022 no teste de 5 anos. Conclusao: EMA diaria simples nao resolve a fragilidade, porque os trades ruins de 2022 ainda ocorreram dentro de um regime que parecia positivo por media movel.
+
+### `quality-mtf-trendrunner-guarded.set`
+
+Mantem a logica do `trendrunner`, mas torna o corte de risco por drawdown mais rapido: ao cair 12% da maxima de equity, o risco passa para 35% do risco normal.
+
+Resultado de 3 anos: +309.32%, winrate 62.50%, PF 2.66, DD aprox. 23.99%, 32 trades. Resultado de 5 anos: +137.11%, winrate 56.25%, PF 2.12, DD aprox. 25.53%, 32 trades.
+
+Conclusao: e o melhor perfil controlado de risco da familia trendrunner. Nao substitui o `trendrunner` agressivo, mas serve como candidato para forward com menor oscilacao.
+
 ### `ustec-curiosity.set`
 
 Foi testado em USTEC com dados completos e gerou zero trades. Conclusao: o setup atual e especifico do XAUUSD; para USTEC, o correto e criar outro perfil de filtros, nao reutilizar o do ouro.
@@ -114,3 +127,15 @@ Os novos presets usam recursos opcionais adicionados ao EA:
 - break-even opcional por R;
 - filtro de risco por drawdown da propria equity;
 - parser atualizado para registrar DD nominal, DD percentual, pico e fundo da queda.
+
+## Logica v4.6
+
+Foram adicionados recursos opcionais para testar a fragilidade de 2022:
+
+- `use_macro_regime_filter`: filtro por EMA em timeframe macro, como D1;
+- `macro_require_price_above_fast`: opcionalmente exige preco acima da EMA rapida;
+- `macro_min_slope_ATR`: exige inclinacao minima da EMA rapida normalizada por ATR;
+- presets `d1soft` e `d1strict` para validar a hipotese de regime diario;
+- preset `trendrunner-guarded` com corte mais rapido de risco por drawdown de equity.
+
+Resultado da rodada: o filtro D1 simples nao resolveu 2022. O controle de risco por equity reduziu drawdown de forma relevante, mas tambem reduziu retorno. A proxima melhoria deve ser um filtro de risco progressivo, nao apenas liga/desliga.

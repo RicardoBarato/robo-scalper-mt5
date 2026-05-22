@@ -1,10 +1,10 @@
 ﻿//+------------------------------------------------------------------+
 //|                                                  RB_Ouro_v4_4.mq5 |
-//|  v4.5: Quality Mode com reteste, MTF e gestao ativa opcional      |
+//|  v4.6: Quality/Trend Mode com regime macro e risco por equity     |
 //|  mode=0 Selective (PF max) | mode=1 Robust (PF>=1.6 alvo)         |
 //+------------------------------------------------------------------+
 #property strict
-#property version "4.50"
+#property version "4.60"
 
 #include <Trade/Trade.mqh>
 CTrade trade;
@@ -147,6 +147,17 @@ input bool use_equity_risk_guard = false;
 input double equity_dd_cutoff_pct = 0.18;
 input double equity_dd_risk_mult = 0.65;
 
+// MACRO REGIME FILTER
+input bool use_macro_regime_filter = false;
+input ENUM_TIMEFRAMES TF_macro = PERIOD_D1;
+input int EMA_macro_fast = 50;
+input int EMA_macro_slow = 200;
+input bool macro_use_closed_bar = true;
+input bool macro_require_fast_above_slow = true;
+input bool macro_require_price_above_fast = false;
+input int macro_slope_bars = 5;
+input double macro_min_slope_ATR = 0.0;
+
 //==================== STATE ====================//
 double daily_loss_R=0.0;
 int trades_today=0;
@@ -186,6 +197,9 @@ int ema_confirm_fast_1_handle=INVALID_HANDLE;
 int ema_confirm_slow_1_handle=INVALID_HANDLE;
 int ema_confirm_fast_2_handle=INVALID_HANDLE;
 int ema_confirm_slow_2_handle=INVALID_HANDLE;
+int ema_macro_fast_handle=INVALID_HANDLE;
+int ema_macro_slow_handle=INVALID_HANDLE;
+int atr_macro_handle=INVALID_HANDLE;
 
 //==================== HELPERS ====================//
 int GetSessionDayKey(datetime t)
@@ -452,6 +466,54 @@ bool MTFConfirmOK(bool want_buy)
       return (f1[0]>s1[0] && f2[0]>s2[0]);
 
    return (f1[0]<s1[0] && f2[0]<s2[0]);
+}
+
+bool MacroRegimeOK(bool want_buy)
+{
+   if(!use_macro_regime_filter)
+      return true;
+
+   int shift = macro_use_closed_bar ? 1 : 0;
+   int slope_bars = macro_slope_bars;
+   if(slope_bars<0)
+      slope_bars=0;
+
+   double fast_now[1], slow_now[1], fast_old[1];
+   if(CopyBuffer(ema_macro_fast_handle,0,shift,1,fast_now)!=1) return false;
+   if(CopyBuffer(ema_macro_slow_handle,0,shift,1,slow_now)!=1) return false;
+   if(CopyBuffer(ema_macro_fast_handle,0,shift+slope_bars,1,fast_old)!=1) return false;
+
+   double close_macro=iClose(_Symbol, TF_macro, shift);
+   if(close_macro<=0.0)
+      return false;
+
+   if(want_buy)
+   {
+      if(macro_require_fast_above_slow && fast_now[0]<=slow_now[0]) return false;
+      if(macro_require_price_above_fast && close_macro<=fast_now[0]) return false;
+
+      if(macro_min_slope_ATR>0.0 && slope_bars>0)
+      {
+         double atr_now[1];
+         if(CopyBuffer(atr_macro_handle,0,shift,1,atr_now)!=1) return false;
+         if(atr_now[0]<=0.0) return false;
+         if((fast_now[0]-fast_old[0]) < macro_min_slope_ATR*atr_now[0]) return false;
+      }
+      return true;
+   }
+
+   if(macro_require_fast_above_slow && fast_now[0]>=slow_now[0]) return false;
+   if(macro_require_price_above_fast && close_macro>=fast_now[0]) return false;
+
+   if(macro_min_slope_ATR>0.0 && slope_bars>0)
+   {
+      double atr_now[1];
+      if(CopyBuffer(atr_macro_handle,0,shift,1,atr_now)!=1) return false;
+      if(atr_now[0]<=0.0) return false;
+      if((fast_old[0]-fast_now[0]) < macro_min_slope_ATR*atr_now[0]) return false;
+   }
+
+   return true;
 }
 
 void ClearRetest()
@@ -808,6 +870,14 @@ int OnInit()
       ema_confirm_slow_2_handle = iMA(_Symbol, TF_confirm_mid,  EMA_confirm_slow, 0, MODE_EMA, PRICE_CLOSE);
    }
 
+   if(use_macro_regime_filter)
+   {
+      ema_macro_fast_handle = iMA(_Symbol, TF_macro, EMA_macro_fast, 0, MODE_EMA, PRICE_CLOSE);
+      ema_macro_slow_handle = iMA(_Symbol, TF_macro, EMA_macro_slow, 0, MODE_EMA, PRICE_CLOSE);
+      if(macro_min_slope_ATR>0.0)
+         atr_macro_handle = iATR(_Symbol, TF_macro, 14);
+   }
+
    if(atr_m1_handle==INVALID_HANDLE || adx_m1_handle==INVALID_HANDLE ||
       ema_fast_handle==INVALID_HANDLE || ema_slow_handle==INVALID_HANDLE)
       return INIT_FAILED;
@@ -824,6 +894,11 @@ int OnInit()
    if(use_mtf_ema_confirm &&
       (ema_confirm_fast_1_handle==INVALID_HANDLE || ema_confirm_slow_1_handle==INVALID_HANDLE ||
        ema_confirm_fast_2_handle==INVALID_HANDLE || ema_confirm_slow_2_handle==INVALID_HANDLE))
+      return INIT_FAILED;
+
+   if(use_macro_regime_filter &&
+      (ema_macro_fast_handle==INVALID_HANDLE || ema_macro_slow_handle==INVALID_HANDLE ||
+       (macro_min_slope_ATR>0.0 && atr_macro_handle==INVALID_HANDLE)))
       return INIT_FAILED;
 
    trade.SetDeviationInPoints(SlippageMax_points);
@@ -882,6 +957,10 @@ void OnTick()
 
    bool bias_up=BiasUp();
    bool bias_dn=BiasDown();
+   if(bias_up && !MacroRegimeOK(true))
+      bias_up=false;
+   if(bias_dn && !MacroRegimeOK(false))
+      bias_dn=false;
    if(!bias_up && !bias_dn) return;
 
    double atr_buf[1];

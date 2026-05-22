@@ -41,6 +41,7 @@ Periodo principal: 2023.05.20 a 2026.05.20, deposito 1000 USD, alavancagem 1:500
 | `quality-mtf-rocket` | +177.88% | 40 | 60.00% | 2.23 | 32.96% | Agressivo, ainda controlado |
 | `quality-mtf-ultra` | +379.76% | 56 | 55.36% | 1.97 | 45.87% | Maior potencia |
 | `quality-mtf-trendrunner` | +481.54% | 36 | 61.11% | 2.77 | 32.20% | Melhor candidato agressivo |
+| `quality-mtf-trendrunner-guarded` | +309.32% | 32 | 62.50% | 2.66 | 23.99% | Melhor perfil controlado |
 
 Teste extra de 5 anos da `quality-mtf-ultra`: 2021.05.20 a 2026.05.20.
 
@@ -54,12 +55,19 @@ Teste extra de 5 anos da `quality-mtf-trendrunner`: 2021.05.20 a 2026.05.20.
 |---:|---:|---:|---:|---:|---|
 | +206.50% | 39 | 58.97% | 2.19 | 43.65% | Melhor PF, mas ainda sofre em 2022 |
 
+Teste extra de 5 anos da `quality-mtf-trendrunner-guarded`: 2021.05.20 a 2026.05.20.
+
+| Retorno | Trades | Winrate | PF | DD % aprox. | Observacao |
+|---:|---:|---:|---:|---:|---|
+| +137.11% | 32 | 56.25% | 2.12 | 25.53% | Reduziu DD, mas cortou retorno |
+
 ## Conclusao
 
 A evolucao v4.5 trouxe duas familias uteis:
 
 - `quality-mtf-direct`: melhor candidata para produto/forward test, porque tem PF e winrate muito superiores.
 - `quality-mtf-trendrunner`: melhor candidata agressiva, porque superou a `ultra` em 3 anos com PF maior e DD menor.
+- `quality-mtf-trendrunner-guarded`: melhor candidata controlada, porque reduziu DD de 5 anos de 43.65% para 25.53%.
 - `quality-mtf-ultra`: referencia de potencia bruta, mas inferior ao `trendrunner` na relacao retorno/DD.
 
-O reteste puro foi rejeitado. A proxima evolucao deve atacar o problema de 2022 e dos piores dias de segunda-feira com um filtro de regime macro/overextension, sem bloquear segunda-feira inteira porque ela continua sendo a principal fonte de ganho.
+O reteste puro foi rejeitado. O filtro macro D1 simples tambem nao resolveu 2022. A proxima evolucao deve focar risco progressivo por equity/regime, porque o problema principal apareceu como sequencia de stops cedo na curva.

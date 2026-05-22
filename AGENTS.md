@@ -39,11 +39,13 @@ Principais presets testados:
 - `RB_Ouro_v4_4_Port.quality-mtf-direct.set`: +113.80%, PF 2.59, DD aprox. 20.65%, 36 trades.
 - `RB_Ouro_v4_4_Port.quality-mtf-ultra.set`: +379.76%, PF 1.97, DD aprox. 45.87%, 56 trades.
 - `RB_Ouro_v4_4_Port.quality-mtf-trendrunner.set`: +481.54%, PF 2.77, DD aprox. 32.20%, 36 trades.
+- `RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set`: +309.32%, PF 2.66, DD aprox. 23.99%, 32 trades.
 
 Leitura atual:
 
 - `quality-mtf-direct` e a melhor candidata para forward/produto conservador.
 - `quality-mtf-trendrunner` e a melhor candidata agressiva.
+- `quality-mtf-trendrunner-guarded` e a melhor candidata de risco controlado.
 - `quality-mtf-ultra` fica como referencia de potencia bruta, mas perdeu para o `trendrunner` em retorno/DD no teste de 3 anos.
 
 ## Direcao Quant
@@ -67,12 +69,12 @@ Evitar:
 
 ## Proxima Hipotese Prioritaria
 
-O `quality-mtf-trendrunner` melhorou muito em 3 anos, mas o teste de 5 anos ainda mostrou fragilidade em 2022.
+O `quality-mtf-trendrunner` melhorou muito em 3 anos, mas o teste de 5 anos ainda mostrou fragilidade em 2022. O filtro D1 por EMA foi testado e nao resolveu. O corte mais rapido de risco por equity reduziu DD, mas cortou retorno.
 
 Proxima evolucao recomendada:
 
-1. Criar filtro de regime macro/tendencial para evitar long em ouro quando H4/D1 estao ruins.
-2. Medir se esse filtro reduz 2022 sem destruir 2025.
+1. Criar risco progressivo por equity/regime, em vez de corte binario.
+2. Medir se reduz 2022 sem destruir 2025.
 3. Comparar 3 anos e 5 anos.
 4. Avaliar retorno, PF, DD percentual, max loss streak, trades/ano e dependencia de poucos dias.
 
