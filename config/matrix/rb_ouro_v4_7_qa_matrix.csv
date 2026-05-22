@@ -1,0 +1,5 @@
+enabled,label,source_path,expert_path,set_path,expert_parameters,from_date,to_date,notes
+1,v47-qa-3y-intrabar,MQL5/Experts/RoboScalper/RB_Ouro_v4_7_QA.mq5,RoboScalper\\RB_Ouro_v4_7_QA,config/RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set,RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set,2023.05.20,2026.05.20,Base agressiva controlada com comportamento intrabar
+1,v47-qa-5y-intrabar,MQL5/Experts/RoboScalper/RB_Ouro_v4_7_QA.mq5,RoboScalper\\RB_Ouro_v4_7_QA,config/RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set,RB_Ouro_v4_4_Port.quality-mtf-trendrunner-guarded.set,2021.05.20,2026.05.20,Teste de fragilidade 2022 e robustez longa
+1,v47-qa-3y-closedbar,MQL5/Experts/RoboScalper/RB_Ouro_v4_7_QA.mq5,RoboScalper\\RB_Ouro_v4_7_QA,config/RB_Ouro_v4_7_QA.closedbar.set,RB_Ouro_v4_7_QA.closedbar.set,2023.05.20,2026.05.20,Mesmo setup mas sinais em candle fechado
+1,v47-qa-5y-closedbar,MQL5/Experts/RoboScalper/RB_Ouro_v4_7_QA.mq5,RoboScalper\\RB_Ouro_v4_7_QA,config/RB_Ouro_v4_7_QA.closedbar.set,RB_Ouro_v4_7_QA.closedbar.set,2021.05.20,2026.05.20,Valida se intrabar estava inflando resultado
