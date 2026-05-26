@@ -2,9 +2,17 @@
 
 ## Status geral
 
-Atencao: historico publico limpo preparado localmente; `force push` ainda pendente de aprovacao final.
+Aprovado: limpeza de historico concluida com sucesso.
 
-O estado publico sanitizado foi preservado em uma branch orfa local. O objetivo e substituir o historico publico antigo por uma base limpa contendo apenas os arquivos educacionais atuais.
+O historico publico antigo foi substituido por uma base limpa contendo apenas os arquivos educacionais atuais. A limpeza foi aplicada no `origin/main` com `force push`.
+
+Baseline remoto pos-limpeza:
+
+- `origin/main`: `577179f chore: create clean public history`
+- Quantidade de commits no `origin/main` imediatamente apos a limpeza: `1`
+- Commits antigos: nao aparecem mais no `origin/main`
+
+Esta atualizacao do relatorio e o primeiro commit normal apos a base publica limpa.
 
 ## Metodo selecionado
 
@@ -157,26 +165,52 @@ Mesmo assim, o historico antigo continha artefatos sensiveis de estrategia e pes
 - Arvore rastreada: apenas arquivos publicos educacionais.
 - Busca por nomes antigos de presets, relatorios, planilhas, EA privado e termos operacionais: sem achados na arvore rastreada.
 - Arquivos privados locais continuam ignorados e nao rastreados.
-- `force push` remoto ainda pendente de aprovacao final.
+- `force push` remoto executado com sucesso.
 
 ## Force push
 
-Nao executado ainda.
+Executado com sucesso.
 
-Comando planejado, caso aprovado:
+Comando usado:
 
 ```powershell
 git push --force-with-lease origin public-clean-history:main
 ```
 
+Resultado:
+
+- `origin/main` foi atualizado de `a6d84b2` para `577179f`.
+- `git fetch origin` confirmou `origin/main` em `577179f986ecdb423c12dbec85121b2be01807bc`.
+- `git rev-list --count origin/main` retornou `1` imediatamente apos a limpeza.
+- `git log --oneline origin/main` exibiu apenas `577179f chore: create clean public history`.
+
+## Validacao remota pos-limpeza
+
+- Commits antigos com pesquisa privada: nao aparecem mais no `origin/main`.
+- Presets reais `.set`: nao aparecem no historico remoto limpo.
+- Relatorios reais ou privados: nao aparecem no historico remoto limpo.
+- Codigo antigo de estrategia privada: nao aparece no historico remoto limpo.
+- Exports, planilhas e artefatos de corretora: nao aparecem no historico remoto limpo.
+- Busca sensivel no historico remoto limpo: encontrou apenas falsos positivos esperados, como regras de `.gitignore`, avisos de seguranca, placeholders ficticios e referencias ao exemplo publico.
+- Compilacao do EA publico: `0 errors, 0 warnings`.
+- `py_compile` dos scripts Python publicos: aprovado.
+
+## Realinhamento local
+
+- `git fetch origin`: executado.
+- `git checkout main`: executado.
+- `git reset --hard origin/main`: executado com aprovacao explicita.
+- `git log --oneline --all`: apos o realinhamento, mostrou apenas o historico limpo.
+- Branch local `public-clean-history`: ainda existe, mas aponta para o mesmo commit limpo de `main` e nao preserva historico antigo.
+
 ## Riscos remanescentes
 
 - Reescrever o historico do repositorio principal nao apaga forks, clones, caches externos ou copias ja feitas por terceiros.
 - Arquivos privados ignorados ainda podem existir localmente na maquina e devem continuar fora do Git.
-- O `force push` altera a base historica do repositorio publico; colaboradores precisarao reclonar ou realinhar seus clones locais.
+- Colaboradores com clones antigos precisarao reclonar ou realinhar seus clones locais.
 
 ## Recomendacao final
 
-Usar a branch orfa limpa como novo `main` publico apos aprovacao final do `force push`.
+O repositorio esta pronto para uso como portfolio publico em termos de limpeza de historico e separacao entre versao publica e pesquisa privada.
 
-Depois do envio, repetir a busca sensivel no estado remoto e confirmar que o GitHub mostra apenas a versao publica limpa.
+Nao criar release ainda ate uma revisao final de apresentacao do README e da pagina do GitHub.
