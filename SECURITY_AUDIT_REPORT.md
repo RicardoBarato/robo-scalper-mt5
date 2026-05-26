@@ -213,4 +213,4 @@ Resultado:
 
 O repositorio esta pronto para uso como portfolio publico em termos de limpeza de historico e separacao entre versao publica e pesquisa privada.
 
-Nao criar release ainda ate uma revisao final de apresentacao do README e da pagina do GitHub.
+Publicar release apenas como draft ate haver aprovacao explicita para a publicacao final.

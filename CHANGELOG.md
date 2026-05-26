@@ -1,6 +1,18 @@
 # Changelog
 
-## v4.6-public
+## v1.0-public
+
+- Prepared the first official public educational release of RB Risk Engine MT5.
+- Replaced the old public Git history with a clean public baseline.
+- Preserved only sanitized educational code, documentation, examples and public tooling.
+- Added the public educational EA `RBRiskEngine_Public.mq5`.
+- Excluded private research, real presets, real reports, broker exports, operational history and production parameters.
+- Validated the public EA compile with `0 errors` and `0 warnings`.
+- Validated public Python scripts with `py_compile`.
+- Confirmed sensitive-search results contain only expected public placeholders, documentation warnings and ignore rules.
+- Kept the repository license-free pending an explicit licensing decision.
+
+## v4.6-public internal hardening label
 
 - Renamed the public repository to `rb-risk-engine-mt5`.
 - Reworked the public project identity away from the original scalping label.

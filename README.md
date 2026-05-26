@@ -11,7 +11,9 @@ This public repository is a sanitized educational release. It is not a profit pr
 
 ## Status
 
-Public educational release: `v4.6-public`.
+Public educational release: `v1.0-public`.
+
+This is the first official public release of RB Risk Engine MT5.
 
 The project started as a short-term trading automation experiment and evolved into a risk-managed Expert Advisor research framework. The public version keeps the architecture, tooling and documentation useful for portfolio review, while private strategy logic, real presets and real reports are intentionally excluded.
 
@@ -164,7 +166,7 @@ The public version does not include:
 - Backtests can overestimate future performance.
 - Spread, slippage, latency and broker execution can materially change results.
 - CFDs and leveraged products can cause rapid losses.
-- The public repository history previously contained private research artifacts; see `SECURITY_AUDIT_REPORT.md`.
+- A security audit and public-history cleanup were completed before the official public release; see `SECURITY_AUDIT_REPORT.md`.
 
 ## Roadmap
 

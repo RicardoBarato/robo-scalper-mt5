@@ -2,18 +2,23 @@
 
 ## Release
 
-`v4.6-public`
+`v1.0-public`
+
+This is the first official public release of RB Risk Engine MT5.
+
+The project is an educational MQL5 / MetaTrader 5 framework focused on Expert Advisor structure, trading automation workflow, risk-management mechanics, backtesting support and separation between public documentation and private research.
 
 ## What this release contains
 
-- Sanitized public README.
-- Educational MQL5 Expert Advisor scaffold.
-- MT5 compile and backtest automation.
-- Fictitious public example parameters.
+- Educational public EA: `RBRiskEngine_Public.mq5`.
+- Professional public project documentation.
+- Fictitious example parameters.
+- Public support scripts for compile, backtest and report workflows.
 - Security policy.
-- Audit report.
+- Security audit report.
 - Architecture and project-history documentation.
 - Roadmap and private next-version plan.
+- Clean public repository history.
 
 ## What this release does not contain
 
@@ -24,10 +29,15 @@
 - Real production parameters.
 - Private signal logic.
 - Live-trading recommendation.
+- Production strategy parameters.
+- Sensitive performance results.
+- Compiled binaries.
 
 ## Removed or excluded
 
-The public tracked tree excludes private reports, `.set` presets, raw exports, tester logs, local MT5 paths and broker-specific configuration.
+Private research, real presets, real reports, raw exports, tester logs, local MT5 paths, broker-specific configuration, sensitive performance results and production parameters are excluded from the public release.
+
+The public examples are synthetic and should not be treated as optimized trading settings.
 
 ## How to test safely
 
@@ -41,4 +51,4 @@ Backtests do not guarantee future performance. Strategy Tester behavior can diff
 
 ## Responsibility
 
-This project is educational software. It is not investment advice.
+This project is educational software. It is not investment advice, a trading signal, a profit promise or a production trading system.

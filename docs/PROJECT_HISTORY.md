@@ -26,9 +26,9 @@ The public repository keeps the engineering workflow and a safe educational EA s
 
 ## 4. Relevant versions
 
-Version labels found in the repository history include v4.4, v4.5 and v4.6 research iterations.
+Version labels from the internal research phase include v4.4, v4.5 and v4.6 research iterations.
 
-The public release is documented as `v4.6-public` because it represents the cleaned educational publication point, not a new trading-performance claim.
+The first official public release is documented as `v1.0-public`. Earlier `v4.x` labels are treated as internal research and hardening context, not public performance claims.
 
 ## 5. Risk-management evolution
 
